@@ -134,7 +134,7 @@
         <resource-file src="src/android/Library/res/layout/actionbar_done_button.xml" target="res/layout/actionbar_done_button.xml"/>
         <resource-file src="src/android/Library/res/layout/multiselectorgrid.xml" target="res/layout/multiselectorgrid.xml"/>
         <resource-file src="src/android/Library/res/values/multiimagechooser_strings_en.xml" target="res/values/multiimagechooser_strings_en.xml"/>
-        <resource-file src="src/android/Library/res/values/themes.xml" target="res/values/themes.xml"/>
+        <!--resource-file src="src/android/Library/res/values/themes.xml" target="res/values/themes.xml"/-->
 
         <resource-file src="src/android/Library/res/values-de/multiimagechooser_strings_de.xml" target="res/values-de/multiimagechooser_strings_de.xml"/>
         <resource-file src="src/android/Library/res/values-es/multiimagechooser_strings_es.xml" target="res/values-es/multiimagechooser_strings_es.xml"/>
