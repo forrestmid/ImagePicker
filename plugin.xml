@@ -36,52 +36,6 @@
         <header-file src="src/ios/SOSPicker.h" />
         <source-file src="src/ios/SOSPicker.m" />
 
-        <header-file src="src/ios/GMImagePicker/UIImage+fixOrientation.h" />
-        <source-file src="src/ios/GMImagePicker/UIImage+fixOrientation.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMAlbumsViewCell.h" />
-        <source-file src="src/ios/GMImagePicker/GMAlbumsViewCell.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMAlbumsViewController.h" />
-        <source-file src="src/ios/GMImagePicker/GMAlbumsViewController.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMFetchItem.h" />
-        <source-file src="src/ios/GMImagePicker/GMFetchItem.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMGridViewCell.h" />
-        <source-file src="src/ios/GMImagePicker/GMGridViewCell.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMGridViewController.h" />
-        <source-file src="src/ios/GMImagePicker/GMGridViewController.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMImagePickerController.h" />
-        <source-file src="src/ios/GMImagePicker/GMImagePickerController.m" />
-
-        <header-file src="src/ios/GMImagePicker/PSYBlockTimer.h" />
-        <source-file src="src/ios/GMImagePicker/PSYBlockTimer.m" />
-
-        <header-file src="src/ios/GMImagePicker/GMPHAsset.h" />
-        <source-file src="src/ios/GMImagePicker/GMPHAsset.m" />
-
-        <resource-file src="src/ios/GMImagePicker/GMEmptyFolder@1x.png" />
-        <resource-file src="src/ios/GMImagePicker/GMEmptyFolder@2x.png" />
-
-        <resource-file src="src/ios/GMImagePicker/GMSelected.png" />
-        <resource-file src="src/ios/GMImagePicker/GMSelected@2x.png" />
-
-        <resource-file src="src/ios/GMImagePicker/GMVideoIcon.png" />
-        <resource-file src="src/ios/GMImagePicker/GMVideoIcon@2x.png" />
-
-        <resource-file src="src/ios/GMImagePicker/ca.lproj" />
-        <resource-file src="src/ios/GMImagePicker/de.lproj" />
-        <resource-file src="src/ios/GMImagePicker/en.lproj" />
-        <resource-file src="src/ios/GMImagePicker/es.lproj" />
-        <resource-file src="src/ios/GMImagePicker/fr.lproj" />
-        <resource-file src="src/ios/GMImagePicker/it.lproj" />
-        <resource-file src="src/ios/GMImagePicker/pt.lproj" />
-        <resource-file src="src/ios/GMImagePicker/pl.lproj" />
-        <resource-file src="src/ios/GMImagePicker/zh-Hans.lproj" />
-
         <framework src="Accelerate.framework" />
         <framework src="Security.framework" />
         <framework src="Photos.framework" />

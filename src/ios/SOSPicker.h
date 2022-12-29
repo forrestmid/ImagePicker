@@ -8,6 +8,7 @@
 
 #import <Cordova/CDVPlugin.h>
 
+#import <UIKit/UIKit.h>
 
 @interface SOSPicker : CDVPlugin < UINavigationControllerDelegate, UIScrollViewDelegate>
 

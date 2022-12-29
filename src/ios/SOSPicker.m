@@ -9,8 +9,8 @@
 #import "SOSPicker.h"
 
 
-#import "GMImagePickerController.h"
-#import "GMFetchItem.h"
+#import <Photos/Photos.h>
+#import <PhotosUI/PhotosUI.h>
 
 #define CDV_PHOTO_PREFIX @"cdv_photo_"
 
@@ -19,10 +19,14 @@ typedef enum : NSUInteger {
     BASE64_STRING = 1
 } SOSPickerOutputType;
 
-@interface SOSPicker () <GMImagePickerControllerDelegate>
+@interface SOSPicker () <PHPickerViewControllerDelegate>
 @end
 
-@implementation SOSPicker
+@implementation SOSPicker{
+    UIScrollView *scrollView;
+    NSMutableArray <UIImageView*>* imageViews;
+    UIButton *selectButton;
+}
 
 @synthesize callbackId;
 
@@ -53,7 +57,6 @@ typedef enum : NSUInteger {
 }
 
 - (void) getPictures:(CDVInvokedUrlCommand *)command {
-
     NSDictionary *options = [command.arguments objectAtIndex: 0];
 
     self.outputType = [[options objectForKey:@"outputType"] integerValue];
@@ -75,27 +78,20 @@ typedef enum : NSUInteger {
 
 - (void)launchGMImagePicker:(bool)allow_video title:(NSString *)title message:(NSString *)message disable_popover:(BOOL)disable_popover maximumImagesCount:(NSInteger)maximumImagesCount
 {
-    GMImagePickerController *picker = [[GMImagePickerController alloc] init:allow_video];
-    picker.delegate = self;
-    picker.maximumImagesCount = maximumImagesCount;
-    picker.title = title;
-    picker.customNavigationBarPrompt = message;
-    picker.colsInPortrait = 4;
-    picker.colsInLandscape = 6;
-    picker.minimumInteritemSpacing = 2.0;
-
-    if(!disable_popover) {
-        picker.modalPresentationStyle = UIModalPresentationPopover;
-
-        UIPopoverPresentationController *popPC = picker.popoverPresentationController;
-        popPC.permittedArrowDirections = UIPopoverArrowDirectionAny;
-        popPC.sourceView = picker.view;
-        //popPC.sourceRect = nil;
+    PHPickerConfiguration *config = [[PHPickerConfiguration alloc] init];
+    config.selectionLimit = maximumImagesCount;
+    if (@available(iOS 15, *)) {
+        config.selection = PHPickerConfigurationSelectionOrdered;
     }
+    config.filter = [PHPickerFilter imagesFilter];
 
-    [self.viewController showViewController:picker sender:nil];
+    PHPickerViewController *pickerViewController = [[PHPickerViewController alloc] initWithConfiguration:config];
+    pickerViewController.delegate = self;
+
+    pickerViewController.modalPresentationStyle = UIModalPresentationPopover;
+
+    [self.viewController presentViewController:pickerViewController animated:YES completion:nil];
 }
-
 
 - (UIImage*)imageByScalingNotCroppingForSize:(UIImage*)anImage toSize:(CGSize)frameSize
 {
@@ -143,102 +139,132 @@ typedef enum : NSUInteger {
 
 #pragma mark - UIImagePickerControllerDelegate
 
+-(void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results{
+    NSLog(@"-picker:%@ didFinishPicking:%@", picker, results);
 
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info
-{
-    [picker.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-    NSLog(@"UIImagePickerController: User finished picking assets");
-}
-
-- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
-{
-    [picker.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-    NSLog(@"UIImagePickerController: User pressed cancel button");
-}
-
-#pragma mark - GMImagePickerControllerDelegate
-
-- (void)assetsPickerController:(GMImagePickerController *)picker didFinishPickingAssets:(NSArray *)fetchArray
-{
-    [picker.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-
-    NSLog(@"GMImagePicker: User finished picking assets. Number of selected items is: %lu", (unsigned long)fetchArray.count);
+    [picker dismissViewControllerAnimated:YES completion:nil];
 
     NSMutableArray * result_all = [[NSMutableArray alloc] init];
     CGSize targetSize = CGSizeMake(self.width, self.height);
     NSFileManager* fileMgr = [[NSFileManager alloc] init];
     NSString* docsPath = [NSTemporaryDirectory()stringByStandardizingPath];
 
-    NSError* err = nil;
-    int i = 1;
-    NSString* filePath;
-    CDVPluginResult* result = nil;
+    //NSError* err = nil;
+    __block CDVPluginResult* cdvResult = nil;
 
-    for (GMFetchItem *item in fetchArray) {
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:nil
+                                                                   message:@"Processing images for upload..."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
 
-        if ( !item.image_fullsize ) {
-            continue;
-        }
+    UIActivityIndicatorView *loadingIndicator = [[UIActivityIndicatorView alloc] initWithFrame: CGRectMake(10, 5, 50, 50)];
+    loadingIndicator.activityIndicatorViewStyle = UIActivityIndicatorViewStyleMedium;
+    alert.view.tintColor = UIColor.blackColor;
 
-        do {
-            filePath = [NSString stringWithFormat:@"%@/%@%03d.%@", docsPath, CDV_PHOTO_PREFIX, i++, @"jpg"];
-        } while ([fileMgr fileExistsAtPath:filePath]);
+    loadingIndicator.hidesWhenStopped = true;
+    [loadingIndicator startAnimating];
 
-        NSData* data = nil;
-        if (self.width == 0 && self.height == 0) {
-            // no scaling required
-            if (self.outputType == BASE64_STRING){
-                UIImage* image = [UIImage imageNamed:item.image_fullsize];
-                [result_all addObject:[UIImageJPEGRepresentation(image, self.quality/100.0f) base64EncodedStringWithOptions:0]];
-            } else {
-                if (self.quality == 100) {
-                    // no scaling, no downsampling, this is the fastest option
-                    [result_all addObject:item.image_fullsize];
-                } else {
-                    // resample first
-                    UIImage* image = [UIImage imageNamed:item.image_fullsize];
-                    data = UIImageJPEGRepresentation(image, self.quality/100.0f);
-                    if (![data writeToFile:filePath options:NSAtomicWrite error:&err]) {
-                        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[err localizedDescription]];
-                        break;
+    [alert.view addSubview:loadingIndicator];
+
+    [self.viewController presentViewController:alert animated:YES completion:nil];
+
+    dispatch_group_t dispatchGroup = dispatch_group_create();
+
+    __block int i = 1;
+    int orderIterative = 1;
+
+    for (PHPickerResult *result in results) {
+        int order = orderIterative++;
+
+        dispatch_group_async(dispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+            dispatch_group_enter(dispatchGroup);
+
+            [result.itemProvider loadObjectOfClass:[UIImage class] completionHandler:^(__kindof id<NSItemProviderReading>  _Nullable object, NSError * _Nullable error) {
+                __block NSError* writeErr = nil;
+
+                NSString* filePath;
+
+                do {
+                    filePath = [NSString stringWithFormat:@"%@/%@%03d.%@", docsPath, CDV_PHOTO_PREFIX, i++, @"jpg"];
+                } while ([fileMgr fileExistsAtPath:filePath]);
+
+                if ([object isKindOfClass:[UIImage class]]) {
+
+                    NSData* data = nil;
+
+                    if (self.width == 0 && self.height == 0) {
+                        // no scaling required
+                        if (self.outputType == BASE64_STRING){
+                            NSMutableDictionary* objectToInsert = [[NSMutableDictionary alloc] init];
+                            [objectToInsert setValue:[NSNumber numberWithInt:order] forKey:@"order"];
+                            [objectToInsert setValue:[UIImageJPEGRepresentation(object, self.quality/100.0f) base64EncodedStringWithOptions:0] forKey:@"data"];
+
+                            [result_all addObject:objectToInsert];
+                        } else {
+                            // resample first
+                            UIImage* image = [UIImage imageNamed:object];
+                            data = UIImageJPEGRepresentation(image, self.quality/100.0f);
+                            if (![data writeToFile:filePath options:NSAtomicWrite error:&writeErr]) {
+                                cdvResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[writeErr localizedDescription]];
+                            } else {
+                                NSMutableDictionary* objectToInsert = [[NSMutableDictionary alloc] init];
+                                [objectToInsert setValue:[NSNumber numberWithInt:order] forKey:@"order"];
+                                [objectToInsert setValue:[[NSURL fileURLWithPath:filePath] absoluteString] forKey:@"data"];
+
+                                [result_all addObject:objectToInsert];
+                            }
+                        }
                     } else {
-                        [result_all addObject:[[NSURL fileURLWithPath:filePath] absoluteString]];
+                        // scale
+                        UIImage* scaledImage = [self imageByScalingNotCroppingForSize:object toSize:targetSize];
+                        data = UIImageJPEGRepresentation(scaledImage, self.quality/100.0f);
+
+                        if (![data writeToFile:filePath options:NSAtomicWrite error:&writeErr]) {
+                            cdvResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[writeErr localizedDescription]];
+                        } else {
+                            if(self.outputType == BASE64_STRING){
+                                NSMutableDictionary* objectToInsert = [[NSMutableDictionary alloc] init];
+                                [objectToInsert setValue:[NSNumber numberWithInt:order] forKey:@"order"];
+                                [objectToInsert setValue:[data base64EncodedStringWithOptions:0] forKey:@"data"];
+
+                                [result_all addObject:objectToInsert];
+                            } else {
+
+                                NSMutableDictionary* objectToInsert = [[NSMutableDictionary alloc] init];
+                                [objectToInsert setValue:[NSNumber numberWithInt:order] forKey:@"order"];
+                                [objectToInsert setValue:[[NSURL fileURLWithPath:filePath] absoluteString] forKey:@"data"];
+
+                                [result_all addObject:objectToInsert];
+                            }
+                        }
                     }
+                    dispatch_group_leave(dispatchGroup);
                 }
-            }
-        } else {
-            // scale
-            UIImage* image = [UIImage imageNamed:item.image_fullsize];
-            UIImage* scaledImage = [self imageByScalingNotCroppingForSize:image toSize:targetSize];
-            data = UIImageJPEGRepresentation(scaledImage, self.quality/100.0f);
-
-            if (![data writeToFile:filePath options:NSAtomicWrite error:&err]) {
-                result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[err localizedDescription]];
-                break;
-            } else {
-                if(self.outputType == BASE64_STRING){
-                    [result_all addObject:[data base64EncodedStringWithOptions:0]];
-                } else {
-                    [result_all addObject:[[NSURL fileURLWithPath:filePath] absoluteString]];
-                }
-            }
-        }
+            }];
+        });
     }
 
-    if (result == nil) {
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:result_all];
-    }
+    dispatch_group_notify(dispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        NSLog(@"finally!");
 
-    [self.viewController dismissViewControllerAnimated:YES completion:nil];
-    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (cdvResult == nil) {
+                NSMutableArray * result_return = [[NSMutableArray alloc] init];
 
+                NSArray *sortedArray = [result_all sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+                    return [[a valueForKey:@"order"] compare:[b valueForKey:@"order"]];
+                }];
+
+                for (NSDictionary* object in sortedArray) {
+                    [result_return addObject:[object valueForKey:@"data"]];
+                }
+
+                cdvResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:result_return];
+            }
+
+            [self.viewController dismissViewControllerAnimated:YES completion:nil];
+            [self.commandDelegate sendPluginResult:cdvResult callbackId:self.callbackId];
+        });
+    });
 }
-
-//Optional implementation:
--(void)assetsPickerControllerDidCancel:(GMImagePickerController *)picker
-{
-    NSLog(@"GMImagePicker: User pressed cancel button");
-}
-
 
 @end
